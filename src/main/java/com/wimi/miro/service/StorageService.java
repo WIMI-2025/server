@@ -28,67 +28,67 @@ public class StorageService {
         this.s3Client = s3Client;
     }
 
+    // 이미지 파일 업로드 메서드
     public String uploadImage(MultipartFile file, String userUid, String imageUid) {
         try {
-            // Validate file
+            // 파일이 비어 있는지 확인
             if (file.isEmpty()) {
                 throw new IllegalArgumentException("파일이 비어 있습니다.");
             }
 
-            // Check file type
+            // 파일의 Content-Type이 이미지인지 확인
             String contentType = file.getContentType();
             if (contentType == null || !contentType.startsWith("image/")) {
                 throw new IllegalArgumentException("이미지 파일만 업로드할 수 있습니다.");
             }
 
-            // Generate key with user folder structure
+            // 파일 확장자 추출 및 S3 저장 경로 생성
             String fileExtension = getExtensionFromFilename(file.getOriginalFilename());
             String key = String.format("users/%s/images/%s.%s", userUid, imageUid, fileExtension);
 
-            // Upload to S3
+            // S3에 이미지 업로드 요청 생성
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
                     .key(key)
                     .contentType(contentType)
                     .build();
 
+            // S3에 실제 파일 업로드
             s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
 
-            // Return CloudFront URL
+            // 업로드된 이미지의 CloudFront 경로 반환
             return String.format("%s/%s", cloudfrontDomain, key);
         } catch (IOException e) {
+            // 업로드 중 예외 발생 시 래핑하여 던짐
             throw new RuntimeException("이미지 업로드 중 오류가 발생했습니다.", e);
         }
     }
 
+    // 이미지 삭제 메서드
     public void deleteImage(String userUid, String imageUid) {
-        // Image key needs to include full path with extension
-        // This is a limitation since we don't store the extension separately
-        // In a real app, we might store image metadata in the database
+        // 이미지가 저장된 S3 key 생성
         String keyPrefix = String.format("users/%s/images/%s", userUid, imageUid);
 
-        // For simplicity, we're assuming we know the extension
-        // In a real app, you'd query for objects with the prefix and delete them
+        // S3 객체 삭제 요청 생성
         DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
                 .bucket(bucketName)
                 .key(keyPrefix)
                 .build();
 
+        // S3에서 객체 삭제
         s3Client.deleteObject(deleteObjectRequest);
     }
 
+    // 파일 이름에서 확장자 추출 (없으면 기본값 "jpg" 반환)
     private String getExtensionFromFilename(String filename) {
         if (filename == null) {
-            return "jpg"; // Default extension
+            return "jpg"; // 기본 확장자
         }
         int lastDotIndex = filename.lastIndexOf('.');
         if (lastDotIndex == -1 || lastDotIndex == filename.length() - 1) {
-            return "jpg"; // Default extension
+            return "jpg"; // 확장자가 없거나 이상한 경우
         }
         return filename.substring(lastDotIndex + 1).toLowerCase();
     }
 
-    public String generateUniqueImageId() {
-        return UUID.randomUUID().toString();
-    }
 }
