@@ -27,4 +27,7 @@ public class Message {
         return TimestampConverter.toLocalDateTime(timestamp);
     }
 
+    public boolean isUserMessage() {
+        return isUserMessage != null && isUserMessage;
+    }
 }

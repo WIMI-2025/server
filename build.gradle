@@ -4,6 +4,10 @@ plugins {
     id 'io.spring.dependency-management' version '1.1.7'
 }
 
+ext {
+    springAiVersion = "1.0.0-M6"
+}
+
 group = 'com.wimi'
 version = '0.0.1-SNAPSHOT'
 
@@ -28,10 +32,23 @@ dependencies {
     implementation 'software.amazon.awssdk:s3:2.20.19'
     implementation 'io.awspring.cloud:spring-cloud-aws-starter:3.1.1'
     implementation 'com.google.firebase:firebase-admin:9.2.0'
+    // JSON 처리를 위한 라이브러리
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    // HTTP 클라이언트
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.ai:spring-ai-bom:$springAiVersion"
+    }
 }
 
 tasks.named('test') {
