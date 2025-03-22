@@ -2,10 +2,13 @@ package com.wimi.miro.model;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.annotation.DocumentId;
+import com.wimi.miro.util.TimestampConverter;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -20,15 +23,8 @@ public class Message {
     private Boolean isUserMessage;
     private Timestamp timestamp;
 
-    // Firestore는 LocalDateTime을 직접 지원하지 않으므로 변환 메서드 추가
-    public java.time.LocalDateTime getTimestampAsLocalDateTime() {
-        return timestamp != null ?
-                java.time.LocalDateTime.ofInstant(
-                        java.time.Instant.ofEpochSecond(
-                                timestamp.getSeconds(),
-                                timestamp.getNanos()
-                        ),
-                        java.time.ZoneId.systemDefault()
-                ) : null;
+    public LocalDateTime getTimeStameAsLocalDateTime() {
+        return TimestampConverter.toLocalDateTime(timestamp);
     }
+
 }

@@ -2,10 +2,13 @@ package com.wimi.miro.model;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.annotation.DocumentId;
+import com.wimi.miro.util.TimestampConverter;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -31,15 +34,10 @@ public class Chat {
                         java.time.ZoneId.systemDefault()
                 ) : null;
     }
-
-    public java.time.LocalDateTime getUpdatedAtAsLocalDateTime() {
-        return updatedAt != null ?
-                java.time.LocalDateTime.ofInstant(
-                        java.time.Instant.ofEpochSecond(
-                                updatedAt.getSeconds(),
-                                updatedAt.getNanos()
-                        ),
-                        java.time.ZoneId.systemDefault()
-                ) : null;
+    public LocalDateTime getCreatedAt() {
+        return TimestampConverter.toLocalDateTime(createdAt);
+    }
+    public LocalDateTime getUpdatedAt() {
+        return TimestampConverter.toLocalDateTime(updatedAt);
     }
 }

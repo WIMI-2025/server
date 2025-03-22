@@ -3,6 +3,7 @@ package com.wimi.miro.repository;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Repository;
 
 import java.lang.reflect.ParameterizedType;
@@ -10,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-@Repository
+@DependsOn("firebaseConfig")
 public class FirestoreRepositoryImpl<T> implements FirestoreRepository<T> {
 
     private final Class<T> entityClass;

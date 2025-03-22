@@ -17,7 +17,7 @@ public class UserRepository extends FirestoreRepositoryImpl<User> {
 
     public User findByEmail(String email) throws Exception {
         var users = super.findByField(COLLECTION_NAME, "email", email);
-        return users.isEmpty() ? null : users.get(0);
+        return users.isEmpty() ? null : users.getFirst();
     }
 
     public void update(String id, User user) throws Exception {
