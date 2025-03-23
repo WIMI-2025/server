@@ -1,5 +1,6 @@
 package com.wimi.miro.service;
 
+import com.wimi.miro.dto.response.ImageUploadResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -9,6 +10,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
+import java.awt.*;
 import java.io.IOException;
 import java.util.UUID;
 
@@ -29,7 +31,7 @@ public class StorageService {
     }
 
     // 이미지 파일 업로드 메서드
-    public String uploadImage(MultipartFile file, String userUid, String imageUid) {
+    public ImageUploadResponse uploadImage(MultipartFile file, String userUid, String imageUid) {
         try {
             // 파일이 비어 있는지 확인
             if (file.isEmpty()) {
@@ -57,7 +59,14 @@ public class StorageService {
             s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
 
             // 업로드된 이미지의 CloudFront 경로 반환
-            return String.format("%s/%s", cloudfrontDomain, key);
+            String imageUrl = String.format("%s/%s", cloudfrontDomain, key);
+
+            return ImageUploadResponse.builder()
+                    .imageUrl(imageUrl)
+                    .build();
+
+
+
         } catch (IOException e) {
             // 업로드 중 예외 발생 시 래핑하여 던짐
             throw new RuntimeException("이미지 업로드 중 오류가 발생했습니다.", e);
