@@ -1,6 +1,6 @@
 package com.wimi.miro.model;
 
-import com.google.cloud.Date;
+import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.annotation.DocumentId;
 import com.wimi.miro.enums.MessageType;
 import lombok.AllArgsConstructor;
@@ -21,7 +21,7 @@ public class Message {
     // 예: /chats/{chatId}/messages/{messageId}
     private String content;
     private Boolean isUserMessage;
-    private Date createdAt;
+    private Timestamp createdAt;
 
     public boolean isUserMessage() {
         return isUserMessage != null && isUserMessage;

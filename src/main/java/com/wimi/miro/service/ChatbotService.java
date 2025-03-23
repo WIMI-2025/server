@@ -1,5 +1,6 @@
 package com.wimi.miro.service;
 
+import com.google.cloud.Timestamp;
 import com.wimi.miro.config.OpenAIConfig;
 import com.wimi.miro.dto.openai.*;
 import com.wimi.miro.dto.request.AnalysisRequest;
@@ -15,7 +16,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 @Service
@@ -34,7 +34,7 @@ public class ChatbotService {
     public AnalysisResponse analysis(AnalysisRequest analysisRequest) throws ExecutionException, InterruptedException {
         // 1. 새 Chat 생성
         Chat chat = Chat.builder()
-                .chatName(analysisRequest.getRelationship() + " " + analysisRequest.getName() + "와의 대화")
+                .chatName(analysisRequest.getRelationship() + " " + analysisRequest.getName() + "와(과)의 대화")
                 .build();
         String chatId = chatRepository.saveChat(chat);
 

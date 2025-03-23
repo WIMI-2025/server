@@ -1,6 +1,7 @@
 package com.wimi.miro.repository;
 
 import com.google.api.core.ApiFuture;
+import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
 import com.wimi.miro.model.Chat;
@@ -24,6 +25,8 @@ public class ChatRepository {
         DocumentReference docRef = getFirestore().collection(COLLECTION_NAME).document();
         String id = docRef.getId();
         chat.setId(id);
+        chat.setCreatedAt(Timestamp.now());
+        chat.setUpdatedAt(Timestamp.now());
         ApiFuture<WriteResult> result = docRef.set(chat);
         result.get(); // 완료될 때까지 대기
         return id;
@@ -55,6 +58,7 @@ public class ChatRepository {
 
     public void updateChat(Chat chat) throws ExecutionException, InterruptedException {
         DocumentReference docRef = getFirestore().collection(COLLECTION_NAME).document(chat.getId());
+        chat.setUpdatedAt(Timestamp.now());
         ApiFuture<WriteResult> result = docRef.set(chat);
         result.get();
     }
@@ -70,13 +74,13 @@ public class ChatRepository {
         return COLLECTION_NAME + "/" + chatId + "/messages";
     }
 
-    public String saveMessage(String chatId, Message message) throws ExecutionException, InterruptedException {
+    public void saveMessage(String chatId, Message message) throws ExecutionException, InterruptedException {
         DocumentReference docRef = getFirestore().collection(getMessagesCollection(chatId)).document();
         String id = docRef.getId();
         message.setId(id);
+        message.setCreatedAt(Timestamp.now());
         ApiFuture<WriteResult> result = docRef.set(message);
         result.get();
-        return id;
     }
 
     public List<Message> findMessagesByChatId(String chatId) throws ExecutionException, InterruptedException {
