@@ -1,6 +1,7 @@
 package com.wimi.miro.controller;
 
 import com.wimi.miro.service.StorageService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,17 +11,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/image")
+@RequiredArgsConstructor
 public class ImageController {
 
     private final StorageService storageService;
 
-    @Autowired
-    public ImageController(StorageService storageService) {
-        this.storageService = storageService;
-    }
-
-    @PostMapping("/image")
+    @PostMapping
     public ResponseEntity<Map<String, String>> uploadImage(
             @RequestParam("file") MultipartFile file,
             @RequestParam("user_uid") String userUid,
@@ -34,7 +31,7 @@ public class ImageController {
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/image")
+    @DeleteMapping
     public ResponseEntity<Map<String, String>> deleteImage(@RequestBody Map<String, String> request) {
         String userUid = request.get("user_uid");
         String imageUid = request.get("image_uid");

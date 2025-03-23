@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ChatbotRequest {
+public class ChatRequest {
     /**
      * 메시지 유형
      * "text": 텍스트 메시지

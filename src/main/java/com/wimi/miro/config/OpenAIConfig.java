@@ -10,10 +10,10 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class OpenAIConfig {
 
     @Getter
-    @Value("${gemini.api.key}")
+    @Value("$openai.api-key}")
     private String apiKey;
 
-    @Value("${gemini.api.url:https://generativelanguage.googleapis.com/v1beta}")
+    @Value("$openai.api-url}")
     private String apiUrl;
 
     @Getter
@@ -21,13 +21,11 @@ public class OpenAIConfig {
     private String model;
 
     @Bean
-    public WebClient geminiWebClient() {
+    public WebClient OpenAiClient() {
         return WebClient.builder()
                 .baseUrl(apiUrl)
+                .defaultHeader("Authorization", "Bearer " + apiKey)
                 .build();
     }
 
-    public String getGenerateContentEndpoint() {
-        return "/models/" + model + ":generateContent?key=" + apiKey;
-    }
 }
