@@ -1,14 +1,12 @@
 package com.wimi.miro.model;
 
-import com.google.cloud.Timestamp;
+import com.google.cloud.Date;
 import com.google.cloud.firestore.annotation.DocumentId;
-import com.wimi.miro.util.TimestampConverter;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -21,11 +19,7 @@ public class Message {
     // 예: /chats/{chatId}/messages/{messageId}
     private String content;
     private Boolean isUserMessage;
-    private Timestamp timestamp;
-
-    public LocalDateTime getTimeStameAsLocalDateTime() {
-        return TimestampConverter.toLocalDateTime(timestamp);
-    }
+    private Date createdAt;
 
     public boolean isUserMessage() {
         return isUserMessage != null && isUserMessage;

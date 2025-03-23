@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 @RestController
 @RequestMapping("/chatbot")
@@ -23,7 +24,7 @@ public class ChatbotController {
     @PostMapping("/analysis")
     public ResponseEntity<AnalysisResponse> analysis(
             @RequestBody AnalysisRequest analysisRequest
-    ) {
+    ) throws ExecutionException, InterruptedException {
         AnalysisResponse response = chatbotService.analysis(analysisRequest);
         return ResponseEntity.ok(response); // 200 OK와 함께 리턴
     }
@@ -31,7 +32,7 @@ public class ChatbotController {
     @PostMapping("/chat")
     public ResponseEntity<ChatResponse> chat(
             @RequestBody ChatRequest chatRequest
-    ) {
+    ) throws ExecutionException, InterruptedException {
         ChatResponse response = chatbotService.chat(chatRequest);
         return ResponseEntity.ok(response); // 200 OK와 함께 리턴
     }

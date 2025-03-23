@@ -23,7 +23,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ExecutionException.class)
     public ResponseEntity<Map<String, String>> handleExecutionException(ExecutionException ex) {
         Map<String, String> errorResponse = new HashMap<>();
-        errorResponse.put("error", "데이터 처리 중 오류가 발생했습니다: " + ex.getMessage());
+        errorResponse.put("error", "데이터베이스 처리 중 오류가 발생했습니다");
+        errorResponse.put("details", ex.getMessage());
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
@@ -37,7 +38,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleGenericException(Exception ex) {
         Map<String, String> errorResponse = new HashMap<>();
-        errorResponse.put("error", "서버 오류가 발생했습니다: " + ex.getMessage());
+        errorResponse.put("error", "서버 오류가 발생했습니다");
+        errorResponse.put("details", ex.getMessage());
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
+    @ExceptionHandler(InterruptedException.class)
+    public ResponseEntity<Map<String, String>> handleInterruptedException(InterruptedException ex) {
+        // 인터럽트 상태 복원
+        Thread.currentThread().interrupt();
+
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("error", "요청 처리가 중단되었습니다");
+        return new ResponseEntity<>(errorResponse, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
 }
