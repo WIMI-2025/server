@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.wimi.miro.config.GeminiConfig;
+import com.wimi.miro.config.OpenAIConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -18,11 +18,11 @@ import java.util.Base64;
 public class GeminiService {
 
     private final WebClient webClient;
-    private final GeminiConfig geminiConfig;
+    private final OpenAIConfig geminiConfig;
     private final ObjectMapper objectMapper;
 
     @Autowired
-    public GeminiService(WebClient geminiWebClient, GeminiConfig geminiConfig, ObjectMapper objectMapper) {
+    public GeminiService(WebClient geminiWebClient, OpenAIConfig geminiConfig, ObjectMapper objectMapper) {
         this.webClient = geminiWebClient;
         this.geminiConfig = geminiConfig;
         this.objectMapper = objectMapper;
