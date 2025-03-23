@@ -1,14 +1,12 @@
 package com.wimi.miro.service;
 
-import com.google.cloud.Timestamp;
 import com.wimi.miro.config.OpenAIConfig;
-import com.wimi.miro.dto.openai.OpenAIChatDefaultResponse;
-import com.wimi.miro.dto.openai.OpenAIChatMessage;
-import com.wimi.miro.dto.openai.OpenAIChatRequest;
+import com.wimi.miro.dto.openai.*;
 import com.wimi.miro.dto.request.AnalysisRequest;
 import com.wimi.miro.dto.request.ChatRequest;
 import com.wimi.miro.dto.response.AnalysisResponse;
 import com.wimi.miro.dto.response.ChatResponse;
+import com.wimi.miro.enums.MessageType;
 import com.wimi.miro.model.Chat;
 import com.wimi.miro.model.Message;
 import com.wimi.miro.repository.ChatRepository;
@@ -17,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 @Service
@@ -25,37 +24,38 @@ public class ChatbotService {
     private final ChatRepository chatRepository;
     private final OpenAIConfig openAIConfig;
 
-    // ChatbotService 클래스의 analysis 메서드
+    /**
+     * 채팅 스크린샷 분석 메서드
+     * 이미지를 분석하여 상황에 맞는 답장을 추천
+     *
+     * @param analysisRequest 분석 요청 객체
+     * @return 분석 결과 응답
+     */
     public AnalysisResponse analysis(AnalysisRequest analysisRequest) throws ExecutionException, InterruptedException {
-        // AnalysisRequest 객체를 이용하여 분석을 수행
         // 1. 새 Chat 생성
         Chat chat = Chat.builder()
-                .chatName(analysisRequest.getRelationship() + analysisRequest.getName() + "와의 대화")
+                .chatName(analysisRequest.getRelationship() + " " + analysisRequest.getName() + "와의 대화")
                 .build();
         String chatId = chatRepository.saveChat(chat);
 
-        // GPT에게 보낼 chat request 구성 (System Message + AnalysisRequest)
         // 2. 시스템 메시지 생성
         String systemPrompt = buildAnalysisSystemPrompt(analysisRequest);
+
         // 3. GPT 요청 생성
-        OpenAIChatRequest gptRequest = new OpenAIChatRequest();
-        List<OpenAIChatMessage> messages = new ArrayList<>();
+        ChatGPTRequest gptRequest = new ChatGPTRequest();
+        List<com.wimi.miro.dto.openai.Message> messages = new ArrayList<>();
 
         // 시스템 메시지 추가
-        OpenAIChatMessage systemMessage = new OpenAIChatMessage();
-        systemMessage.setRole("system");
-        systemMessage.setContent(systemPrompt);
-        messages.add(systemMessage);
+        messages.add(new TextMessage("system", systemPrompt));
 
-        // 사용자 메시지 추가 (이미지 URL 포함)
-        OpenAIChatMessage userMessage = new OpenAIChatMessage();
-        userMessage.setRole("user");
-        userMessage.setContent("스크린샷을 분석해주세요: " + analysisRequest.getImageUrl());
-        messages.add(userMessage);
+        // 사용자 메시지 추가 (멀티모달 - 텍스트와 이미지)
+        List<Content> userContents = new ArrayList<>();
+        userContents.add(new TextContent("text", "스크린샷 분석"));
+        userContents.add(new ImageContent("image_url", new ImageUrl(analysisRequest.getImageUrl())));
 
+        messages.add(new MultimodalMessage("user", userContents));
         gptRequest.setMessages(messages);
 
-        // GPT에게 요청 보내기
         // 4. API 호출
         OpenAIChatDefaultResponse gptResponse = openAIConfig.OpenAiClient().post()
                 .bodyValue(gptRequest)
@@ -63,7 +63,6 @@ public class ChatbotService {
                 .bodyToMono(OpenAIChatDefaultResponse.class)
                 .block();
 
-        // DB에 chat + GPT의 응답을 message로 구성해서 저장
         // 5. 응답 처리
         if (gptResponse == null) {
             throw new RuntimeException("GPT API 호출에 실패했습니다.");
@@ -74,6 +73,7 @@ public class ChatbotService {
         // 사용자 메시지 저장
         Message userMsgEntity = Message.builder()
                 .content("이미지 분석 요청: " + analysisRequest.getImageUrl())
+                .type(MessageType.IMAGE)
                 .isUserMessage(true)
                 .build();
         chatRepository.saveMessage(chatId, userMsgEntity);
@@ -81,11 +81,11 @@ public class ChatbotService {
         // AI 응답 저장
         Message aiMsgEntity = Message.builder()
                 .content(responseContent)
+                .type(MessageType.TEXT)
                 .isUserMessage(false)
                 .build();
         chatRepository.saveMessage(chatId, aiMsgEntity);
 
-        // GPT 응답 analysisResponse 구성해서 응답
         // 7. 응답 반환
         return AnalysisResponse.builder()
                 .messageResponse(responseContent)
@@ -93,9 +93,15 @@ public class ChatbotService {
                 .build();
     }
 
-    // ChatbotService 클래스의 chat 메서드
+    /**
+     * 채팅 답장 추천 메서드
+     * 이전 채팅 내역과 새로운 메시지를 분석하여 답장을 추천
+     *
+     * @param chatRequest 채팅 요청 객체
+     * @return 채팅 응답
+     */
     public ChatResponse chat(ChatRequest chatRequest) throws ExecutionException, InterruptedException {
-        // ChatRequest 객체를 이용하여 채팅을 수행
+        // 채팅 ID 확인
         String chatId = chatRequest.getChatId();
         Chat chat = chatRepository.findChatById(chatId);
         if (chat == null) {
@@ -105,45 +111,61 @@ public class ChatbotService {
         // updatedAt 업데이트
         chatRepository.updateChat(chat);
 
-        // DB에서 chatId를 가지고 이전에 했던 메시지 내역 쿼리
         // 1. 이전 메시지 처리
         List<Message> previousMessages = chatRepository.findMessagesByChatId(chatId);
 
-
-        // GPT에게 보낼 chat request 구성 (System Message + 과거 채팅 내역 + 새로 들어온 chat)
         // 2. 시스템 메시지 준비
         String systemPrompt = buildChatSystemPrompt(chatRequest);
 
         // 3. GPT 요청 생성
-        OpenAIChatRequest gptRequest = new OpenAIChatRequest();
-
-        List<OpenAIChatMessage> messages = new ArrayList<>();
+        ChatGPTRequest gptRequest = new ChatGPTRequest();
+        gptRequest.setModel("gpt-4o"); // 멀티모달 모델 사용
+        List<com.wimi.miro.dto.openai.Message> messages = new ArrayList<>();
 
         // 시스템 메시지 추가
-        OpenAIChatMessage systemMessage = new OpenAIChatMessage();
-        systemMessage.setRole("system");
-        systemMessage.setContent(systemPrompt);
-        messages.add(systemMessage);
+        messages.add(new TextMessage("system", systemPrompt));
 
         // 이전 메시지 추가 (최대 10개)
         int startIdx = Math.max(0, previousMessages.size() - 10);
         for (int i = startIdx; i < previousMessages.size(); i++) {
             Message msg = previousMessages.get(i);
-            OpenAIChatMessage chatMsg = new OpenAIChatMessage();
-            chatMsg.setContent(msg.getContent());
-            chatMsg.setRole(msg.isUserMessage() ? "user" : "assistant");
-            messages.add(chatMsg);
+
+            if (msg.getType() == MessageType.TEXT) {
+                // 텍스트 메시지 처리
+                messages.add(new TextMessage(
+                        msg.isUserMessage() ? "user" : "assistant",
+                        msg.getContent()
+                ));
+            } else if (msg.getType() == MessageType.IMAGE && msg.isUserMessage()) {
+                // 이미지 메시지 처리 (사용자 메시지만)
+                List<Content> contents = new ArrayList<>();
+                contents.add(new ImageContent("image_url", new ImageUrl(msg.getContent())));
+                messages.add(new MultimodalMessage("user", contents));
+            }
         }
 
         // 새 사용자 메시지 추가
-        OpenAIChatMessage userMessage = new OpenAIChatMessage();
-        userMessage.setRole("user");
-        userMessage.setContent(chatRequest.getMessageRequest());
-        messages.add(userMessage);
+        MessageType messageType = MessageType.valueOf(chatRequest.getMessageType().toUpperCase());
+
+        if (messageType == MessageType.IMAGE) {
+            // 이미지 메시지 처리
+            List<Content> userContents = new ArrayList<>();
+
+            // 이미지와 함께 텍스트도 추가 (있는 경우)
+            if (chatRequest.getMessageRequest() != null && !chatRequest.getMessageRequest().isEmpty()) {
+                userContents.add(new TextContent("text", chatRequest.getMessageRequest()));
+            }
+
+            userContents.add(new ImageContent("image_url", new ImageUrl(chatRequest.getImageUrl())));
+            messages.add(new MultimodalMessage("user", userContents));
+        } else {
+            // 텍스트 메시지 처리
+            messages.add(new TextMessage("user", chatRequest.getMessageRequest()));
+        }
 
         gptRequest.setMessages(messages);
 
-        // GPT에게 요청 보내기
+        // 4. API 호출
         OpenAIChatDefaultResponse gptResponse = openAIConfig.OpenAiClient().post()
                 .bodyValue(gptRequest)
                 .retrieve()
@@ -156,11 +178,11 @@ public class ChatbotService {
         }
         String responseContent = gptResponse.getChoices().getFirst().getMessage().getContent();
 
-        // DB에 chat + GPT의 응답을 message로 구성해서 저장
         // 6. 메시지 저장
         // 사용자 메시지 저장
         Message userMsgEntity = Message.builder()
-                .content(chatRequest.getMessageRequest())
+                .content(messageType == MessageType.IMAGE ? chatRequest.getImageUrl() : chatRequest.getMessageRequest())
+                .type(messageType)
                 .isUserMessage(true)
                 .build();
         chatRepository.saveMessage(chatId, userMsgEntity);
@@ -168,11 +190,11 @@ public class ChatbotService {
         // AI 응답 저장
         Message aiMsgEntity = Message.builder()
                 .content(responseContent)
+                .type(MessageType.TEXT)
                 .isUserMessage(false)
                 .build();
         chatRepository.saveMessage(chatId, aiMsgEntity);
 
-        // GPT 응답 chatResponse로 구성해서 응답
         // 7. 응답 반환
         return ChatResponse.builder()
                 .messageResponse(responseContent)
@@ -180,7 +202,12 @@ public class ChatbotService {
                 .build();
     }
 
-    // 스크린샷 분석을 위한 시스템 프롬프트 구성
+    /**
+     * 스크린샷 분석을 위한 시스템 프롬프트 구성
+     *
+     * @param request 분석 요청
+     * @return 시스템 프롬프트
+     */
     private String buildAnalysisSystemPrompt(AnalysisRequest request) {
         return String.format("""
             당신은 'WIMI(Replies That Fit with Me)'라는 메시지 답장 도우미 AI입니다.
@@ -210,7 +237,12 @@ public class ChatbotService {
         );
     }
 
-    // 채팅 요청을 위한 시스템 프롬프트 구성
+    /**
+     * 채팅 요청을 위한 시스템 프롬프트 구성
+     *
+     * @param request 채팅 요청
+     * @return 시스템 프롬프트
+     */
     private String buildChatSystemPrompt(ChatRequest request) {
         return String.format("""
             당신은 'WIMI(Replies That Fit with Me)'라는 메시지 답장 도우미 AI입니다.
@@ -230,5 +262,4 @@ public class ChatbotService {
                 request.getRelationship() != null ? request.getRelationship() : "일반적인 관계"
         );
     }
-
 }

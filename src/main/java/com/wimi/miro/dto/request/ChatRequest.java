@@ -1,5 +1,6 @@
 package com.wimi.miro.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -37,4 +38,10 @@ public class ChatRequest {
      * 예: 업무 관계, 연인 관계, 친구 관계 등
      */
     private String relationship;
+
+    /**
+     * 이미지 URL (이미지 메시지일 경우)
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String imageUrl;
 }
