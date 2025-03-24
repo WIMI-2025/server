@@ -85,7 +85,7 @@ public class ChatRepository {
 
     public List<Message> findMessagesByChatId(String chatId) throws ExecutionException, InterruptedException {
         Query query = getFirestore().collection(getMessagesCollection(chatId))
-                .orderBy("timestamp", Query.Direction.ASCENDING);
+                .orderBy("createdAt", Query.Direction.ASCENDING);
 
         ApiFuture<QuerySnapshot> future = query.get();
         List<Message> messages = new ArrayList<>();

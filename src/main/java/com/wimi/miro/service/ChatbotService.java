@@ -1,5 +1,6 @@
 package com.wimi.miro.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.Timestamp;
 import com.wimi.miro.config.OpenAIConfig;
 import com.wimi.miro.dto.openai.*;
@@ -12,6 +13,7 @@ import com.wimi.miro.model.Chat;
 import com.wimi.miro.model.Message;
 import com.wimi.miro.repository.ChatRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -20,6 +22,7 @@ import java.util.concurrent.ExecutionException;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ChatbotService {
     private final ChatRepository chatRepository;
     private final OpenAIConfig openAIConfig;
@@ -72,7 +75,7 @@ public class ChatbotService {
         // 6. 메시지 저장
         // 사용자 메시지 저장
         Message userMsgEntity = Message.builder()
-                .content("이미지 분석 요청: " + analysisRequest.getImageUrl())
+                .content(analysisRequest.getImageUrl())
                 .type(MessageType.IMAGE)
                 .isUserMessage(true)
                 .build();
@@ -115,15 +118,36 @@ public class ChatbotService {
         List<Message> previousMessages = chatRepository.findMessagesByChatId(chatId);
 
         // 2. 시스템 메시지 준비
-        String systemPrompt = buildChatSystemPrompt(chatRequest);
+        String systemPrompt = buildChatSystemPrompt();
 
         // 3. GPT 요청 생성
         ChatGPTRequest gptRequest = new ChatGPTRequest();
-        gptRequest.setModel("gpt-4o"); // 멀티모달 모델 사용
         List<com.wimi.miro.dto.openai.Message> messages = new ArrayList<>();
 
         // 시스템 메시지 추가
         messages.add(new TextMessage("system", systemPrompt));
+
+        // 이전 메시지 추가 (최대 10개)
+        log.info("이전 메시지 수: {}", previousMessages.size());
+
+        // 앞의 두 메시지 (항상 포함): 이미지 요청 + 그에 대한 assistant 응답
+        if (previousMessages.size() >= 2) {
+            Message imageRequest = previousMessages.get(0);
+            Message assistantReply = previousMessages.get(1);
+
+            // 1. 이미지 메시지 (user)
+            if (imageRequest.getType() == MessageType.IMAGE && imageRequest.isUserMessage()) {
+                List<Content> contents = new ArrayList<>();
+                contents.add(new ImageContent("image_url", new ImageUrl(imageRequest.getContent())));
+                messages.add(new MultimodalMessage("user", contents));
+            }
+
+            // 2. assistant의 텍스트 응답
+            if (assistantReply.getType() == MessageType.TEXT && !assistantReply.isUserMessage()) {
+                messages.add(new TextMessage("assistant", assistantReply.getContent()));
+            }
+        }
+
 
         // 이전 메시지 추가 (최대 10개)
         int startIdx = Math.max(0, previousMessages.size() - 10);
@@ -138,8 +162,9 @@ public class ChatbotService {
                 ));
             } else if (msg.getType() == MessageType.IMAGE && msg.isUserMessage()) {
                 // 이미지 메시지 처리 (사용자 메시지만)
+                String imageUrl = msg.getContent();
                 List<Content> contents = new ArrayList<>();
-                contents.add(new ImageContent("image_url", new ImageUrl(msg.getContent())));
+                contents.add(new ImageContent("image_url", new ImageUrl(imageUrl)));
                 messages.add(new MultimodalMessage("user", contents));
             }
         }
@@ -166,6 +191,13 @@ public class ChatbotService {
         gptRequest.setMessages(messages);
 
         // 4. API 호출
+//        try {
+//            ObjectMapper mapper = new ObjectMapper();
+//            log.info("OpenAI 요청: {}", mapper.writeValueAsString(gptRequest));
+//        } catch (Exception e) {
+//            log.error("로깅 실패", e);
+//        }
+
         OpenAIChatDefaultResponse gptResponse = openAIConfig.OpenAiClient().post()
                 .bodyValue(gptRequest)
                 .retrieve()
@@ -200,8 +232,8 @@ public class ChatbotService {
                 .messageResponse(responseContent)
                 .chatId(chatId)
                 .build();
-    }
 
+        }
     /**
      * 스크린샷 분석을 위한 시스템 프롬프트 구성
      *
@@ -210,27 +242,56 @@ public class ChatbotService {
      */
     private String buildAnalysisSystemPrompt(AnalysisRequest request) {
         return String.format("""
-            당신은 'WIMI(Replies That Fit with Me)'라는 메시지 답장 도우미 AI입니다.
-            사용자가 제공한 채팅 스크린샷을 분석하고, 상황에 적절한 답장을 추천해주세요.
-            
-            상대방 이름: %s
-            관계: %s
-            상황: %s
-            
-            스크린샷을 분석하여 다음 정보를 파악하세요:
-            1. 대화의 전반적인 맥락과 분위기
-            2. 상대방의 마지막 메시지의 의도와 감정
-            3. 상황과 관계에 맞는 적절한 답장 방향
-            
-            답장 추천 시 다음을 고려하세요:
-            - 대화의 맥락과 흐름을 유지
-            - 관계와 상황에 맞는 적절한 톤과 공손함 유지
-            - 필요한 경우 3개 정도의 답장 옵션 제공 (격식/비격식, 긴/짧은 답장 등)
-            
-            답변 형식:
-            [분석] 대화 맥락과 상대방 의도 분석
-            [추천 답장] 상황에 맞는 답장 추천
-            """,
+   당신은 'WIMI(Replies That Fit with Me)'라는 맞춤형 메시지 답장 도우미 AI입니다.
+        사용자가 제공한 채팅 스크린샷을 분석하고, 상황과 관계에 적절한 답장을 추천해주세요.
+       \s
+        ## 기본 정보
+        - 상대방 이름: %s
+        - 관계: %s
+        - 상황: %s
+       \s
+        ## 분석 지침
+        1. 대화의 맥락과 분위기를 깊이 이해하세요
+        2. 상대방의 마지막 메시지에 담긴 의도와 감정을 세밀히 파악하세요
+        3. 메시지에 담긴 명시적/암시적 질문이나 요청을 식별하세요
+        4. 대화의 친밀도와 격식 수준을 고려하세요
+       \s
+        ## 답장 생성 방식
+        당신은 감성형과 이성형을 균형있게 조합한 답변을 제공해야 합니다:
+       \s
+        ### 감성형 접근 (공감과 정서적 연결)
+        - 상대방의 감정에 공감하고 정서적 연결을 중시합니다
+        - 따뜻하고 친근한 어조를 사용합니다
+        - 상대방의 말에 공감을 표현하고 정서적 지지를 제공합니다
+        - 예시 요소: "그랬구나, 많이 힘들었겠다", "너의 기분 이해해", "함께 기뻐해"
+       \s
+        ### 이성형 접근 (분석과 문제 해결)
+        - 상황을 객관적으로 분석하고 논리적으로 접근합니다
+        - 정제된 문장과 명확한 표현을 사용합니다
+        - 필요시 해결책이나 조언을 제공합니다
+        - 예시 요소: "상황을 고려하면", "이렇게 접근하는 것이 효과적일 수 있어", "다음 단계로는"
+       \s
+        ## 최종 답변 구성
+        [분석]
+        대화 맥락과 상대방의 의도 분석 (간략하게 3-4줄)
+       \s
+        [감성 요소]
+        공감과 정서적 연결을 표현하는 요소 (1-2개 문장)
+       \s
+        [이성 요소]
+        상황에 대한 객관적 분석과 제안 (1-2개 문장)
+       \s
+        [추천 답장]
+        다음 유형의 답장을 1-3개 제안하고, 각 답장의 감정 톤과 이모티콘 사용을 간략히 설명하세요:
+       \s
+        1. 😊 보다 감성적인 답장 (공감 중심)
+        2. 👍 균형잡힌 답장 (감성과 이성의 조화)
+        3. 💡 보다 이성적인 답장 (명확한 의사소통 중심)
+       \s
+        각 답장은 자연스러운 대화체로 작성하고, 이모티콘은 문장의 맥락에 맞게 조심스럽게 활용하세요. 이모티콘은 감정을 강화하되, 과하지 않도록 조절하는 것이 중요합니다.
+       \s
+        각 옵션은 자연스러운 대화체로 작성하고, 한국어 문화와 정서에 맞게 조정하세요.
+       \s""",
                 request.getName(),
                 request.getRelationship(),
                 request.getSituation()
@@ -240,26 +301,15 @@ public class ChatbotService {
     /**
      * 채팅 요청을 위한 시스템 프롬프트 구성
      *
-     * @param request 채팅 요청
      * @return 시스템 프롬프트
      */
-    private String buildChatSystemPrompt(ChatRequest request) {
-        return String.format("""
-            당신은 'WIMI(Replies That Fit with Me)'라는 메시지 답장 도우미 AI입니다.
-            사용자가 제공한 메시지와 맥락을 바탕으로 상황에 적절한 답장을 추천해주세요.
-            
-            관계: %s
-            
-            답장 추천 시 다음을 고려하세요:
-            - 대화의 맥락과 흐름을 유지
-            - 관계와 상황에 맞는 적절한 톤과 공손함 유지
-            - 필요한 경우 여러 답장 옵션 제공 (격식/비격식, 긴/짧은 답장 등)
-            
-            답변 형식:
-            [분석] 대화 맥락과 상대방 의도 분석
-            [추천 답장] 상황에 맞는 답장 추천
-            """,
-                request.getRelationship() != null ? request.getRelationship() : "일반적인 관계"
-        );
+    private String buildChatSystemPrompt() {
+        return """
+        ## 분석 지침
+        1. 대화의 전체 맥락과 흐름을 파악하세요
+        2. 이전 메시지들의 패턴과 어조를 분석하세요
+        3. 상대방의 마지막 메시지에 담긴 의도와 감정을 파악하세요
+        4. 사용자와 상대방 간의 관계 역학을 고려하세요
+        """;
     }
 }

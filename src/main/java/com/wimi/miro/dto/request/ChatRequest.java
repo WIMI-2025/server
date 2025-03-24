@@ -17,7 +17,7 @@ public class ChatRequest {
     /**
      * 메시지 유형
      * "text": 텍스트 메시지
-     * "image": 이미지 메시지 (이미지는 별도 multipart로 전송)
+     * "image": 이미지 메시지
      */
     private String messageType;
 
@@ -32,12 +32,6 @@ public class ChatRequest {
      * 채팅 ID (맥락 유지 채팅에서 사용)
      */
     private String chatId;
-
-    /**
-     * 관계 정보 (선택)
-     * 예: 업무 관계, 연인 관계, 친구 관계 등
-     */
-    private String relationship;
 
     /**
      * 이미지 URL (이미지 메시지일 경우)
