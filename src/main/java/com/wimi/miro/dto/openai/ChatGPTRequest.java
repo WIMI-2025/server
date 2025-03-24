@@ -3,7 +3,6 @@ package com.wimi.miro.dto.openai;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -14,7 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 public class ChatGPTRequest {
     private String model = "gpt-4o";
-    private List<Message> messages;
+    private List<ChatMessage> messages;
     private boolean stream = false;
     private double temperature = 1;
 

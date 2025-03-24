@@ -8,7 +8,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @AllArgsConstructor
-public class ImageMessage extends Message {
+public class ImageMessage extends ChatMessage {
     private List<Content> content;
 
     public ImageMessage(String role, List<Content> content) {

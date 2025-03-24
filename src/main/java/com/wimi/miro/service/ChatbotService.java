@@ -1,7 +1,5 @@
 package com.wimi.miro.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.cloud.Timestamp;
 import com.wimi.miro.config.OpenAIConfig;
 import com.wimi.miro.dto.openai.*;
 import com.wimi.miro.dto.request.AnalysisRequest;
@@ -46,7 +44,7 @@ public class ChatbotService {
 
         // 3. GPT 요청 생성
         ChatGPTRequest gptRequest = new ChatGPTRequest();
-        List<com.wimi.miro.dto.openai.Message> messages = new ArrayList<>();
+        List<ChatMessage> messages = new ArrayList<>();
 
         // 시스템 메시지 추가
         messages.add(new TextMessage("system", systemPrompt));
@@ -122,7 +120,7 @@ public class ChatbotService {
 
         // 3. GPT 요청 생성
         ChatGPTRequest gptRequest = new ChatGPTRequest();
-        List<com.wimi.miro.dto.openai.Message> messages = new ArrayList<>();
+        List<ChatMessage> messages = new ArrayList<>();
 
         // 시스템 메시지 추가
         messages.add(new TextMessage("system", systemPrompt));

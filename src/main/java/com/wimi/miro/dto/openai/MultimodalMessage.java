@@ -5,7 +5,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class MultimodalMessage extends Message {
+public class MultimodalMessage extends ChatMessage {
     private List<Content> content;
 
     public MultimodalMessage(String role, List<Content> content) {

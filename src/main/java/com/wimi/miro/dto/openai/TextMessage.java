@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class TextMessage extends Message {
+public class TextMessage extends ChatMessage {
     private String content;
 
     public TextMessage(String role, String content) {
