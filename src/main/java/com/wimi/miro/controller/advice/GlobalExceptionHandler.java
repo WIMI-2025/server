@@ -16,7 +16,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleIllegalArgumentException(IllegalArgumentException ex) {
         Map<String, String> errorResponse = new HashMap<>();
-        errorResponse.put("error", ex.getMessage());
+        errorResponse.put("error", "잘못된 요청입니다");
+        errorResponse.put("details", ex.getMessage());
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
@@ -32,6 +33,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleMaxSizeException(MaxUploadSizeExceededException ex) {
         Map<String, String> errorResponse = new HashMap<>();
         errorResponse.put("error", "파일 크기가 너무 큽니다.");
+        errorResponse.put("details", ex.getMessage());
         return new ResponseEntity<>(errorResponse, HttpStatus.PAYLOAD_TOO_LARGE);
     }
 
@@ -50,6 +52,7 @@ public class GlobalExceptionHandler {
 
         Map<String, String> errorResponse = new HashMap<>();
         errorResponse.put("error", "요청 처리가 중단되었습니다");
+        errorResponse.put("details", ex.getMessage());
         return new ResponseEntity<>(errorResponse, HttpStatus.SERVICE_UNAVAILABLE);
     }
 
