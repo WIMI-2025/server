@@ -32,4 +32,9 @@ public class AnalysisRequest {
      * 예: 업무 상황, 연애 상황, 친구 상황 등
      */
     private String situation;
+
+    /**
+     * 사용자 UID
+     */
+    private String userUid;
 }

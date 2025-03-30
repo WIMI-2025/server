@@ -36,6 +36,7 @@ public class ChatbotService {
         // 1. 새 Chat 생성
         Chat chat = Chat.builder()
                 .chatName(analysisRequest.getRelationship() + " " + analysisRequest.getName() + "와(과)의 대화")
+                .userUid(analysisRequest.getUserUid())
                 .build();
         String chatId = chatRepository.saveChat(chat);
 
