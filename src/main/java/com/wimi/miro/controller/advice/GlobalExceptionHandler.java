@@ -92,8 +92,8 @@ public class GlobalExceptionHandler {
         // 디스코드로 알림 발송
         discordNotifier.sendErrorNotification(errorType + ": " + ex.getMessage(), ex)
                 .subscribe(
-                        response -> log.debug("디스코드 알림 발송 성공: {}", response),
-                        error -> log.error("디스코드 알림 발송 실패", error)
+                        response -> log.debug("Discord Notify Success: {}", response),
+                        error -> log.error("Discord Notify Fail", error)
                 );
     }
 }

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wimi.miro.config.DiscordConfig;
 import com.wimi.miro.dto.discord.DiscordRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
@@ -12,6 +13,7 @@ import reactor.core.publisher.Mono;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class DiscordNotifier {
@@ -53,6 +55,27 @@ public class DiscordNotifier {
                 .bodyValue(jsonPayload)
                 .retrieve()
                 .bodyToMono(String.class);
+    }
+
+
+    public Mono<String> sendNotification(String message) {
+        DiscordRequest request = DiscordRequest.create(message);
+
+        String jsonPayload;
+        try {
+            jsonPayload = objectMapper.writeValueAsString(request);
+        } catch (JsonProcessingException e) {
+            log.error("Discord Norifier JSON Parsing Error", e);
+            return Mono.error(e);
+        }
+
+        return discordConfig.DiscordRegisterWebhookClient().post()
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(jsonPayload)
+                .retrieve()
+                .bodyToMono(String.class)
+                .doOnSuccess(response -> log.info("Discord Notify Success: {}", response))
+                .doOnError(error -> log.error("Discord Notify Fail", error));
     }
 
 

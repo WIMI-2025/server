@@ -127,7 +127,7 @@ public class ChatbotService {
         messages.add(new TextMessage("system", systemPrompt));
 
         // 이전 메시지 추가 (최대 10개)
-        log.info("이전 메시지 수: {}", previousMessages.size());
+        log.info("previous message count: {}", previousMessages.size());
 
         // 앞의 두 메시지 (항상 포함): 이미지 요청 + 그에 대한 assistant 응답
         if (previousMessages.size() >= 2) {
